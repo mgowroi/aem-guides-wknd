@@ -1,110 +1,126 @@
-# Frontend Build
+# Sample AEM project template
 
-## Features
+This is a project template for AEM-based applications. It is intended as a best-practice set of examples as well as a potential starting point to develop your own functionality.
 
-* Full TypeScript, ES6 and ES5 support (with applicable Webpack wrappers).
-* TypeScript and JavaScript linting (using a TSLint ruleset – driven by ESLint - rules can be adjusted to suit your team's needs).
-* ES5 output, for legacy browser support.
-* Globbing
-    * No need to add imports anywhere.
-    * All JS and CSS files can now be added to each component (best practice is under /clientlib/js or /clientlib/(s)css)
-    * No .content.xml or js.txt/css.txt files needed as everything is run through Webpack
-    * The globber pulls in all JS files under the /component/ folder. Webpack allows CSS/SCSS files to be chained in via JS files. They are pulled in through sites.js.
-    * The only files consumed by AEM are the output files site.js and site.css, the resources folder in /clientlib-site as well as dependencies.js and dependencies.css in /clientlib-dependencies
-* Chunks
-    * Main (site js/css)
-* Full Sass/Scss support (Sass is compiled to CSS via Webpack).
-* Static webpack development server with built in proxy to a local instance of AEM
+## Modules
 
-## Installation
+The main parts of the template are:
 
-1. Install [NodeJS](https://nodejs.org/en/download/) (v10+), globally. This will also install `npm`.
-2. Navigate to `ui.frontend` in your project and run `npm ci`. (You must have run the archetype with `-DfrontendModule=general` to populate the ui.frontend folder)
+* core: Java bundle containing all core functionality like OSGi services, listeners or schedulers, as well as component-related Java code such as servlets or request filters.
+* it.tests: Java based integration tests
+* ui.apps: contains the /apps (and /etc) parts of the project, ie JS&CSS clientlibs, components, and templates
+* ui.content: contains sample content using the components from the ui.apps
+* ui.config: contains runmode specific OSGi configs for the project
+* ui.frontend: an optional dedicated front-end build mechanism (Angular, React or general Webpack project)
+* ui.tests: Selenium based UI tests
+* all: a single content package that embeds all of the compiled modules (bundles and content packages) including any vendor dependencies
+* analyse: this module runs analysis on the project which provides additional validation for deploying into AEMaaCS
 
-## Usage
+## How to build
 
-The following npm scripts drive the frontend workflow:
+To build all the modules run in the project root directory the following command with Maven 3:
 
-* `npm run dev` - Full build of client libraries with JS optimization disabled (tree shaking, etc) and source maps enabled and CSS optimization disabled.
-* `npm run prod` - Full build of client libraries build with JS optimization enabled (tree shaking, etc), source maps disabled and CSS optimization enabled.
-* `npm run start` - Starts a static webpack development server for local development with minimal dependencies on AEM.
+    mvn clean install
 
-### General
+To build all the modules and deploy the `all` package to a local instance of AEM, run in the project root directory the following command:
 
-The ui.frontend module compiles the code under the `ui.frontend/src` folder and outputs the compiled CSS and JS, and any resources beneath a folder named `ui.frontend/dist`.
+    mvn clean install -PautoInstallSinglePackage
 
-* **Site** - `site.js`, `site.css` and a `resources/` folder for layout dependent images and fonts are created in a `dist/clientlib-site` folder.
-* **Dependencies** - `dependencies.js` and `dependencies.css` are created in a `dist/clientlib-dependencies` folder.
+Or to deploy it to a publish instance, run
 
-### JavaScript
+    mvn clean install -PautoInstallSinglePackagePublish
 
-* **Optimization** - for production builds, all JS that is not being used or
-called is removed.
+Or alternatively
 
-### CSS
+    mvn clean install -PautoInstallSinglePackage -Daem.port=4503
 
-* **Autoprefixing** - all CSS is run through a prefixer and any properties that require prefixing will automatically have those added in the CSS.
-* **Optimization** - at post, all CSS is run through an optimizer (cssnano) which normalizes it according to the following default rules:
-    * Reduces CSS calc expression wherever possible, ensuring both browser compatibility and compression.
-    * Converts between equivalent length, time and angle values. Note that by default, length values are not converted.
-    * Removes comments in and around rules, selectors & declarations.
-    * Removes duplicated rules, at-rules and declarations. Note that this only works for exact duplicates.
-    * Removes empty rules, media queries and rules with empty selectors, as they do not affect the output.
-    * Merges adjacent rules by selectors and overlapping property/value pairs.
-    * Ensures that only a single `@charset` is present in the CSS file and moves it to the top of the document.
-    * Replaces the CSS initial keyword with the actual value, when the resulting output is smaller.
-    * Compresses inline SVG definitions with SVGO.
-* **Cleaning** - explicit clean task for wiping out the generated CSS, JS and Map files on demand.
-* **Source Mapping** - development build only.
+Or to deploy only the bundle to the author, run
 
-#### Notes
+    mvn clean install -PautoInstallBundle
 
-* Utilizes dev-only and prod-only webpack config files that share a common config file. This way the development and production settings can be tweaked independently.
+Or to deploy only a single content package, run in the sub-module directory (i.e `ui.apps`)
 
-### Client Library Generation
+    mvn clean install -PautoInstallPackage
 
-The second part of the ui.frontend module build process leverages the [aem-clientlib-generator](https://www.npmjs.com/package/aem-clientlib-generator) plugin to move the compiled CSS, JS and any resources into the `ui.apps` module. The aem-clientlib-generator configuration is defined in `clientlib.config.js`. The following client libraries are generated:
+## Testing
 
-* **clientlib-site** - `ui.apps/src/main/content/jcr_root/apps/<app>/clientlibs/clientlib-site`
-* **clientlib-dependencies** - `ui.apps/src/main/content/jcr_root/apps/<app>/clientlibs/clientlib-dependencies`
+There are three levels of testing contained in the project:
 
-###  Page Inclusion
+### Unit tests
 
-`clientlib-site` and `clientlib-dependencies` categories are included on pages via the Page Policy configuration as part of the default template. To view the policy, edit the **Content Page Template**  > **Page Information** > **Page Policy**.
+This show-cases classic unit testing of the code contained in the bundle. To
+test, execute:
 
-The final inclusion of client libraries on the sites page is as follows:
+    mvn clean test
 
-```html
+### Integration tests
 
-<HTML>
-    <head>
-        <link rel="stylesheet" href="clientlib-base.css" type="text/css">
-        <script type="text/javascript" src="clientlib-dependencies.js"></script>
-        <link rel="stylesheet" href="clientlib-dependencies.css" type="text/css">
-        <link rel="stylesheet" href="clientlib-site.css" type="text/css">
-    </head>
-    <body>
-        ....
-        <script type="text/javascript" src="clientlib-site.js"></script>
-        <script type="text/javascript" src="clientlib-base.js"></script>
-    </body>
-</HTML>
-```
+This allows running integration tests that exercise the capabilities of AEM via
+HTTP calls to its API. To run the integration tests, run:
 
-The above inclusion can of course be modified by updating the Page Policy and/or modifying the categories and embed properties of respective client libraries.
+    mvn clean verify -Plocal
 
-### Static Webpack Development Server
+Test classes must be saved in the `src/main/java` directory (or any of its
+subdirectories), and must be contained in files matching the pattern `*IT.java`.
 
-Included in the ui.frontend module is a [webpack-dev-server](https://github.com/webpack/webpack-dev-server) that provides live reloading for rapid front-end development outside of AEM. The setup leverages the [html-webpack-plugin](https://github.com/jantimon/html-webpack-plugin) to automatically inject CSS and JS compiled from the ui.frontend module into a static HTML template.
+The configuration provides sensible defaults for a typical local installation of
+AEM. If you want to point the integration tests to different AEM author and
+publish instances, you can use the following system properties via Maven's `-D`
+flag.
 
-#### Important files
+| Property | Description | Default value |
+| --- | --- | --- |
+| `it.author.url` | URL of the author instance | `http://localhost:4502` |
+| `it.author.user` | Admin user for the author instance | `admin` |
+| `it.author.password` | Password of the admin user for the author instance | `admin` |
+| `it.publish.url` | URL of the publish instance | `http://localhost:4503` |
+| `it.publish.user` | Admin user for the publish instance | `admin` |
+| `it.publish.password` | Password of the admin user for the publish instance | `admin` |
 
-* `ui.frontend/webpack.dev.js` - This contains the configuration for the webpack-dev-serve and points to the html template to use. It also contains a proxy configuration to an AEM instance running on `localhost:4502`.
-* `ui.frontend/src/main/webpack/static/index.html` - This is the static HTML that the server will run against. This allows a developer to make CSS/JS changes and see them immediately reflected in the markup. It is assumed that the markup placed in this file accurately reflects generated markup by AEM components. Note* that markup in this file does **not** get automatically synced with AEM component markup. This file also contains references to client libraries stored in AEM, like Core Component CSS and Responsive Grid CSS. The webpack development server is set up to proxy these CSS/JS includes from a local running AEM instance based on the configuration found in `ui.frontend/webpack.dev.js`.
+The integration tests in this archetype use the [AEM Testing
+Clients](https://github.com/adobe/aem-testing-clients) and showcase some
+recommended [best
+practices](https://github.com/adobe/aem-testing-clients/wiki/Best-practices) to
+be put in use when writing integration tests for AEM.
 
-#### Using
+## Static Analysis
 
-1. From within the root of the project run the command `mvn -PautoInstallSinglePackage clean install` to install the entire project to an AEM instance running at `localhost:4502`
-2. Navigate inside the `ui.frontend` folder.
-3. Run the following command `npm run start` to start the webpack dev server. Once started it should open a browser (localhost:8080 or the next available port).
-4. You can now modify CSS, JS, SCSS, and TS files and see the changes immediately reflected in the webpack dev server.
+The `analyse` module performs static analysis on the project for deploying into AEMaaCS. It is automatically
+run when executing
+
+    mvn clean install
+
+from the project root directory. Additional information about this analysis and how to further configure it
+can be found here https://github.com/adobe/aemanalyser-maven-plugin
+
+### UI tests
+
+They will test the UI layer of your AEM application using Selenium technology. 
+
+To run them locally:
+
+    mvn clean verify -Pui-tests-local-execution
+
+This default command requires:
+* an AEM author instance available at http://localhost:4502 (with the whole project built and deployed on it, see `How to build` section above)
+* Chrome browser installed at default location
+
+Check README file in `ui.tests` module for more details.
+
+## ClientLibs
+
+The frontend module is made available using an [AEM ClientLib](https://helpx.adobe.com/experience-manager/6-5/sites/developing/using/clientlibs.html). When executing the NPM build script, the app is built and the [`aem-clientlib-generator`](https://github.com/wcm-io-frontend/aem-clientlib-generator) package takes the resulting build output and transforms it into such a ClientLib.
+
+A ClientLib will consist of the following files and directories:
+
+- `css/`: CSS files which can be requested in the HTML
+- `css.txt` (tells AEM the order and names of files in `css/` so they can be merged)
+- `js/`: JavaScript files which can be requested in the HTML
+- `js.txt` (tells AEM the order and names of files in `js/` so they can be merged
+- `resources/`: Source maps, non-entrypoint code chunks (resulting from code splitting), static assets (e.g. icons), etc.
+
+## Maven settings
+
+The project comes with the auto-public repository configured. To setup the repository in your Maven settings, refer to:
+
+    http://helpx.adobe.com/experience-manager/kb/SetUpTheAdobeMavenRepository.html
